@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from 'react';
+import { useState, useEffect, useRef, type CSSProperties } from 'react';
 import { useReplicant } from '../../hooks/useReplicant';
 
 const styles: Record<string, CSSProperties> = {
@@ -134,6 +134,15 @@ export function ExampleDashboard() {
   const [stopwatch] = useReplicant('stopwatch');
   const [inputText, setInputText] = useState('');
   const [timeInput, setTimeInput] = useState('');
+
+  const initialized = useRef(false);
+
+  useEffect(() => {
+    if (!initialized.current && alert !== undefined) {
+      setInputText(alert);
+      initialized.current = true;
+    }
+  }, [alert]);
 
   const handleSetTime = (time: number) => {
     nodecg.sendMessage('setTime', time * 1000);
