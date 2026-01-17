@@ -1,3 +1,4 @@
+import '@/browser/global.css';
 import { createRoot } from 'react-dom/client';
 import { ExampleDashboard } from './App';
 
