@@ -109,24 +109,31 @@ export default (nodecg: NodeCG) => {
 
 ## プロジェクト構成
 
-```
+```text
+.
 ├── bundleName.ts              # バンドル名の定義
 ├── cfg/                       # NodeCG 設定ファイル
 ├── configschema.json          # バンドル設定の JSON Schema
-├── src/
-│   ├── browser/               # ダッシュボード・グラフィックス共通
+├── src/                       # ソースコード (Viteでビルド)
+│   ├── browser/               # フロントエンド（Dashboard / Graphics）
+│   │   ├── dashboard/         # 各ダッシュボードパネルのソース
+│   │   ├── graphics/          # 各グラフィックス（オーバーレイ）のソース
+│   │   ├── hooks/             # 共用 Hooks (useReplicant等)
 │   │   └── global.d.ts        # ブラウザ側の型定義
-│   ├── extension/             # NodeCG Extension
+│   ├── extension/             # バックエンド（NodeCG Extension）
 │   │   └── nodecg.d.ts        # Extension 側の型定義
-│   ├── nodecg/                # NodeCG 型定義
-│   │   ├── replicants.d.ts    # Replicant の型定義
-│   │   └── messages.d.ts      # Message の型定義
-│   └── schemas/               # Zod スキーマ
-│       ├── bundleConfig.ts    # バンドル設定スキーマ
-│       └── index.ts           # スキーマの export
+│   ├── nodecg/                # NodeCG 内部の型定義（Replicants, Messages）
+│   └── schemas/               # Zod スキーマ（データバリデーション）
+├── books/                     # Zenn Book チャプター原稿 (Markdown)
+├── images/                    # 記事用画像リソース
 ├── vite.config.mts            # Vite 設定
 └── vite-plugin-nodecg.mts     # NodeCG 用 Vite プラグイン
 ```
+
+> [!CAUTION]
+> ルートにある `/dashboard`, `/graphics`, `/extension`, `/shared`, `/schemas` フォルダはビルドによって自動生成される成果物です。
+> これらを直接編集しても `src/` 内のソースコードには反映されず、ビルド時に上書きされるため注意してください。
+
 
 ## ライセンス
 
