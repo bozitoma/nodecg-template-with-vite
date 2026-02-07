@@ -1,140 +1,90 @@
 # NodeCG Template with Vite
 
-NodeCG + Vite + React + TypeScript を使用した配信オーバーレイ開発テンプレートです。
+NodeCG を用いたライブ配信グラフィックを、React と TypeScript で効率よく構築するための開発用テンプレートです。Vite による高速な開発サイクルと、型安全なデータ同期（Replicant）をすぐに始められるように最適化されています。
 
-## 使い方
+## 前提条件
 
-### 開発サーバーの起動
+- **Node.js**: v22 以上 (LTS推奨)
+- **pnpm**: パッケージマネージャー (Corepackで有効化してください)
+- **Git**
 
-```bash
-npm run dev
-```
-
-Vite の開発サーバーと NodeCG サーバーが同時に起動します。
-
-- **NodeCG ダッシュボード**: http://localhost:9090
-- **Vite 開発サーバー**: http://localhost:8080
-
-### プロダクションビルド
+## クイックスタート
 
 ```bash
-npm run build
-nodecg start
+# 依存関係のインストール
+pnpm install
+
+# 開発サーバーの起動 (Vite + NodeCG)
+pnpm dev
+
+# ビルドと本番実行
+pnpm build
+npx nodecg start
 ```
 
-## 設定
+## 開発の仕組み
 
-### バンドル名 (Bundle Name)
+このテンプレートは、`src/` 内のソースコードを Vite でビルドし、NodeCG が認識するバンドル構造（ルートの `dashboard/`, `graphics/`, `extension/`, `schemas/`）を自動生成します。
 
-バンドル名は `bundleName.ts` で一元管理しています：
+- **自動HTML生成**: `src/browser/dashboard/foo/index.tsx` を作成すると、ビルド時に `./dashboard/foo.html` が自動生成されます。
+- **型安全な通信**: Zod スキーマと TypeScript の型定義を組み合わせることで、Dashboard / Graphics / Extension 間の通信を完全に補完・チェックできます。
 
-```typescript
-// bundleName.ts
-export const BUNDLE_NAME = 'nodecg-template-with-vite' as const;
-export type BundleName = typeof BUNDLE_NAME;
-```
+## 開発手順ガイド
 
-> [!IMPORTANT]
-> **バンドル名はプロジェクトのフォルダ名と一致させる必要があります。**
-> NodeCG はフォルダ名をバンドル名として認識するため、`BUNDLE_NAME` の値を変更する場合はフォルダ名も合わせて変更してください。
+新しい機能（例：スコアボード）を追加する標準的なフローは以下の通りです。
 
-バンドル名は以下のファイルで使用されています：
+### 1. データ構造の定義 (`src/schemas`)
+`Zod` を使用して、同期したいデータ（Replicant）の構造を定義します。
+- `src/schemas/scoreboard.ts` を作成しスキーマを定義。
+- `src/schemas/index.ts` からエクスポート。
 
-- `bundleName.ts` - 定数定義
-- `vite.config.mts` - ビルド設定
-- `src/browser/global.d.ts` - ブラウザ側の型定義
-- `src/extension/nodecg.d.ts` - Extension 側の型定義
+### 2. 型定義の紐付け (`src/nodecg`)
+Replicant や Message の名前に型を紐付けます。これにより、エディタで強力な補完が効くようになります。
+- **Replicant**: `src/nodecg/replicants.d.ts` の `ReplicantMap` に登録。
+- **Message**: `src/nodecg/messages.d.ts` の `MessageMap` に登録。
 
-### バンドル設定 (Bundle Configuration)
+### 3. フロントエンドの実装 (`src/browser`)
+`src/browser/dashboard/` または `graphics/` 以下にディレクトリを作成します。
+- **Dashboard**: 操作パネルの実装。`useReplicant` フックで値を更新します。
+- **Graphics**: 配信画面（オーバーレイ）の実装。`useReplicant` フックで値を監視し描画します。
+- **CSS**: 各ディレクトリに `.css` を配置し、`index.tsx` で import します。
 
-バンドル固有の設定は NodeCG の `cfg` ディレクトリを使用して管理します。
+### 4. バックエンドの実装 (`src/extension`)
+ブラウザを閉じても動かしたいロジック（タイマー等）や、機密情報を扱う処理（API連携）を記述します。
+- `src/extension/index.ts` がエントリポイントです。必要に応じてファイルを分割して読み込んでください。
 
-#### 1. 設定スキーマの定義
+### 5. マニフェストへの登録 (`package.json`)
+作成した HTML ファイルを NodeCG に認識させるため、`package.json` の `nodecg` セクションにパネルやグラフィックスの設定を追記します。
 
-`src/schemas/bundleConfig.ts` で Zod スキーマを定義します：
-
-```typescript
-// src/schemas/bundleConfig.ts
-import { z } from "zod";
-
-export const bundleConfigSchema = z.object({
-  // 例：API トークンの設定
-  apiToken: z.string().optional(),
-});
-
-export type BundleConfig = z.infer<typeof bundleConfigSchema>;
-```
-
-#### 2. JSON Schema の作成
-
-NodeCG はバンドル設定のバリデーションに JSON Schema を使用します。プロジェクトルートに `configschema.json` を作成します：
-
-```json
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "type": "object",
-  "properties": {
-    "apiToken": {
-      "type": "string",
-      "description": "API トークン"
-    }
-  }
-}
-```
-
-#### 3. 設定ファイルの作成
-
-`cfg/<バンドル名>.json` に設定ファイルを作成します：
-
-```json
-// cfg/nodecg-template-with-vite.json
-{
-  "apiToken": "your-api-token-here"
-}
-```
-
-> [!NOTE]
-> 設定ファイルは `.js`、`.yaml`、`.json` 形式に対応しています。
-> 詳細は [NodeCG 公式ドキュメント](https://www.nodecg.dev/ja/docs/bundle-configuration) を参照してください。
-
-#### 4. Extension での設定値の使用
-
-```typescript
-// src/extension/index.ts
-export default (nodecg: NodeCG) => {
-  const config = nodecg.bundleConfig;
-  console.log(config.apiToken); // 型安全にアクセス可能
-};
-```
-
-## プロジェクト構成
+## プロジェクト構成（詳細）
 
 ```text
 .
-├── bundleName.ts              # バンドル名の定義
-├── cfg/                       # NodeCG 設定ファイル
-├── configschema.json          # バンドル設定の JSON Schema
-├── src/                       # ソースコード (Viteでビルド)
-│   ├── browser/               # フロントエンド（Dashboard / Graphics）
-│   │   ├── dashboard/         # 各ダッシュボードパネルのソース
-│   │   ├── graphics/          # 各グラフィックス（オーバーレイ）のソース
+├── bundleName.ts              # バンドル名の定義（URLや型定義に使用）
+├── cfg/                       # NodeCG 設定ファイル (.gitignore対象)
+├── configschema.json          # NodeCG 設定のバリデーションスキーマ
+├── src/                       # 編集対象のソースコード
+│   ├── browser/               # フロントエンド（React）
+│   │   ├── dashboard/         # ダッシュボードパネル (src/browser/dashboard/*/index.tsx)
+│   │   ├── graphics/          # グラフィックス (src/browser/graphics/*/index.tsx)
 │   │   ├── hooks/             # 共用 Hooks (useReplicant等)
-│   │   └── global.d.ts        # ブラウザ側の型定義
-│   ├── extension/             # バックエンド（NodeCG Extension）
-│   │   └── nodecg.d.ts        # Extension 側の型定義
-│   ├── nodecg/                # NodeCG 内部の型定義（Replicants, Messages）
-│   └── schemas/               # Zod スキーマ（データバリデーション）
-├── books/                     # Zenn Book チャプター原稿 (Markdown)
-├── images/                    # 記事用画像リソース
+│   │   └── global.css         # リセットCSS・共通の変数定義
+│   ├── extension/             # バックエンド (Node.js/Rollupビルド)
+│   ├── nodecg/                # Replicant / Message の型定義
+│   └── schemas/               # Zod スキーマ定義
 ├── vite.config.mts            # Vite 設定
-└── vite-plugin-nodecg.mts     # NodeCG 用 Vite プラグイン
+└── vite-plugin-nodecg.mts     # NodeCG 連携用 Vite プラグイン
 ```
 
 > [!CAUTION]
-> ルートにある `/dashboard`, `/graphics`, `/extension`, `/shared`, `/schemas` フォルダはビルドによって自動生成される成果物です。
-> これらを直接編集しても `src/` 内のソースコードには反映されず、ビルド時に上書きされるため注意してください。
+> ルートにある `/dashboard`, `/graphics`, `/extension`, `/shared`, `/schemas` はビルド成果物です。**これらを直接編集しないでください。** 編集は必ず `src/` 内で行います。
 
+## 詳細な解説リソース
+
+本テンプレートを使用した具体的な実装例（スコアボード、タイマー、外部API連携など）については、以下の Zenn Book で詳しく解説しています。
+
+- **[NodeCG 配信グラフィック開発入門](https://zenn.dev/bozitoma/books/nodecg-react-overlay)**
 
 ## ライセンス
 
-MIT
+MIT (詳細は [LICENSE](./LICENSE) を参照)
